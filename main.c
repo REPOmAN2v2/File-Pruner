@@ -10,35 +10,77 @@
 #include <dirent.h>
 #include <stdbool.h>
 
-bool checkFormat(const char *filename);
-int listDir(const char *path);
-int readFile(const char *path, const char *filename);
-FILE * openFile(const char *path, const char *filename, const char *flag);
-void editFile(char *buffer, unsigned long len, const char *filename);
-void writeNew(char *buffer, const int offset, unsigned long len, const char *filename);
+static bool checkFormat(const char *filename);
+static int parseDir();
+static void readFile(const char *filename);
+static FILE * openFile(const char *path, const char *filename, const char *flag);
+static void editFile(const char *buffer, unsigned long len, const char *filename);
+static void writeNew(const char *buffer, const int offset, unsigned long len, const char *filename);
+static void parseArgs(const unsigned int argc, const char * const argv[]);
+static void printHelp();
+static void printVersion();
 
-const unsigned int chunkID = 0x52494646;
-const char *output = "./output";
+static const unsigned int chunkID = 0x52494646;
+static const char *input = NULL;
+static const char *extension = NULL;
+static const char *output = "./output";
 
 int main(int argc, char * const argv[])
 {
+	if (argc == 1) {
+		printHelp();
+	} else {
+		parseArgs(argc, (const char * const *)argv);
+	}
+
 	struct stat st = {0};
 
 	if (stat(output, &st) == -1) {
 	    mkdir(output);
 	}
 
-	fprintf(stdout, "Path: %s\nOutput: %s\n\n", argv[1], output);
+	fprintf(stdout, "Path: %s\nOutput: %s\n\n", input, output);
 
-	listDir(argv[1]);
+	parseDir();
 }
 
-int listDir(const char *path) 
+void parseArgs(const unsigned int argc, const char * const argv[])
+{
+	bool eFlag = false;
+	bool pFlag = false;
+
+	for (size_t i = 1; i < argc; i++) {
+		if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+			printHelp();
+		} else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
+			printVersion();
+		} else if (strcmp(argv[i], "-p") == 0 || strcmp(argv[i], "--path") == 0) {
+			if (i + 1 <= argc - 1) {
+				++i;
+				input = argv[i];
+				pFlag = true;
+			}
+		} else if (strcmp(argv[i], "-e") == 0 || strcmp(argv[i], "--extension") == 0) {
+			if (i + 1 <= argc - 1) {
+				++i;
+				extension = argv[i];
+				eFlag = true;
+			}
+		}
+	}
+
+	if (!pFlag || !eFlag) {
+		fprintf(stderr, "The path and file extension have to be specified.\n\n");
+		printHelp();
+	}
+}
+
+int parseDir() 
 {
     struct dirent *entry;
     DIR *dp;
 
-    dp = opendir(path);
+    dp = opendir(input);
     if (dp == NULL) {
         perror("opendir: Path does not exist or could not be read.");
         return -1;
@@ -46,7 +88,7 @@ int listDir(const char *path)
 
     while ((entry = readdir(dp)))
         if (checkFormat(entry->d_name)) {
-        	readFile(path, entry->d_name);
+        	readFile(entry->d_name);
         }
 
     closedir(dp);
@@ -55,24 +97,21 @@ int listDir(const char *path)
 
 bool checkFormat(const char *filename)
 {
-	size_t len = strlen(filename);
-	if (filename[len-4] == '.'
-		&& filename[len-3] == 'b'
-		&& filename[len-2] == 'i'
-		&& filename[len-1] == 'g') {
-		puts(filename);
-		return true;
-	}
+	const char *dot = strrchr(filename, '.');
 
-	return false;
+	if (dot && !strcmp(dot + 1, extension)) {
+		return true;
+	} else {
+		return false;
+	}
 }
 
-int readFile(const char *path, const char *filename)
+void readFile(const char *filename)
 {
-	FILE *file = openFile(path, filename, "rb");
+	FILE *file = openFile(input, filename, "rb");
 	
 	if (file == NULL) {
-		fprintf(stderr, "Could not open %s%s\n", path, filename);
+		fprintf(stderr, "Could not open %s%s\n", input, filename);
 	} else {
 		fprintf(stdout, "Opened file with success\n");
 		fseek(file, 0, SEEK_END);
@@ -113,9 +152,8 @@ FILE * openFile(const char *path, const char *filename, const char *flag)
 	return file;
 }
 
-void editFile(char *buffer, unsigned long len, const char *filename)
+void editFile(const char *buffer, unsigned long len, const char *filename)
 {
-	// 0x52494646
 	unsigned int pos = 0, code;
 	while ( pos < len) {
 		code = buffer[pos] << 24 | buffer[pos+1] << 16 | buffer[pos+2] << 8 | buffer[pos+3];
@@ -132,7 +170,7 @@ void editFile(char *buffer, unsigned long len, const char *filename)
 	fprintf(stderr, "Code not found, unrecognised filetype for %s\n", filename);
 }
 
-void writeNew(char *buffer, const int offset, unsigned long len, const char *filename)
+void writeNew(const char *buffer, const int offset, unsigned long len, const char *filename)
 {
 	char *filepath = NULL;
 	asprintf(&filepath, "%s/", output);
@@ -147,4 +185,21 @@ void writeNew(char *buffer, const int offset, unsigned long len, const char *fil
 	file = openFile(filepath, filename, "wb");
 	fwrite(buffer, 1, offset, file);
 	fclose(file);
+
+	free(filepath);
+}
+
+void printHelp()
+{
+	fprintf(stdout, "--path/-p /path/to/folder/\tSpecify the path to the folder containing the files to process (with trailing slash)\n"
+					"--help/-h \t\t\tPrint this help screen\n"
+					"--version/-v\t\t\tPrint version information.\n");
+    exit(EXIT_SUCCESS);
+}
+
+void printVersion()
+{
+	fprintf(stdout, "File pruner 0.3\n\n"
+					"The MIT License (MIT)\nCopyright (c) 2014 REPOmAN2v2\n\n");
+	exit(EXIT_SUCCESS);
 }
