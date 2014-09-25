@@ -1,14 +1,10 @@
-#define _GNU_SOURCE
+#define _GNU_SOURCE		// asprintf()
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <dirent.h>
-#include <stdbool.h>
+#include <sys/stat.h>	// struct stat and stat()
+#include <stdio.h>		// file IO
+#include <stdlib.h>		// dynamic mem and exit()
+#include <stdbool.h>	// boolean status flags
+#include <dirent.h>		// directory functionality
 
 static bool checkFormat(const char *filename);
 static int parseDir();
@@ -75,7 +71,7 @@ void parseArgs(const unsigned int argc, const char * const argv[])
 	}
 }
 
-int parseDir() 
+int parseDir()
 {
     struct dirent *entry;
     DIR *dp;
@@ -109,7 +105,7 @@ bool checkFormat(const char *filename)
 void readFile(const char *filename)
 {
 	FILE *file = openFile(input, filename, "rb");
-	
+
 	if (file == NULL) {
 		fprintf(stderr, "Could not open %s%s\n", input, filename);
 	} else {
