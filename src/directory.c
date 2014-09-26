@@ -8,6 +8,8 @@
 #include <stdlib.h> 	// free
 #include <pthread.h>	// threads
 
+const char *output = "../output";
+
 static int dir_count(DIR *in, const char *path);
 static void * thread_check_file(void *in);
 

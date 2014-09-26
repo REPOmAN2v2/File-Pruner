@@ -3,6 +3,8 @@
 
 #define dir_process(...) dir_process_fn((File){__VA_ARGS__})
 
+extern const char *output;
+
 struct _file;
 
 typedef void (*level_fn)(struct _file path);

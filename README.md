@@ -22,7 +22,7 @@ Implementation
 
 If you want to modify this to support another format, it's easy as long as the format is organised in mostly the same way and you want to delete the header.
 
-You'll have to modify the chunkID, which is the pattern you want to recognise.Everything up to that chunk is deleted. Depending on the length of your chunk you'll have to modify the way the chunk recognition code is built when reading the file, in findChunk(). Right now, it reads 4 bytes byte-by-byte and stores them in an uint32.
+You'll have to modify the chunkID in file.c, which is the pattern you want to recognise. Everything up to that chunk is deleted. Depending on the length of your chunk you'll have to modify the way the chunk recognition code is built when reading the file, in file_find_chuck(). Right now, it reads 4 bytes byte-by-byte and stores them in an uint32.
 
 The code is fairly well encapsulated. The directory parser is self contained and takes any number of struct _file members as arguments thanks to a simple macro. Two of these arguments can be callbacks to execute when encountering a dir or a file. Directories can be recursively searched if the flag is set. 
 
@@ -33,7 +33,7 @@ This will probably be updated in the future to support other filetypes natively.
 Version
 ----
 
-0.6
+0.7
 
 Installation
 --------------

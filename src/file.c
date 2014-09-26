@@ -6,6 +6,8 @@
 #include "include.h"	// global variables
 #include "file.h"
 
+static const unsigned int chunkID = 0x52494646;
+
 static int file_read(File *in);
 static int file_check_format(const char *filename);
 static long file_find_chunk(File in);

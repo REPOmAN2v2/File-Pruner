@@ -2,17 +2,16 @@
 #include <stdlib.h>		// dynamic mem and exit()
 #include <stdbool.h>	// boolean status flags
 #include <string.h>		// strcmp
+#include <getopt.h>		// getopt_long
 
-#include "directory.h"	// directory functionality
-#include "file.h"		// file processing
+#include "file.h"		// file_process
+#include "directory.h"	// dir_process, dir_check_output
 
-static void parse_args(const unsigned int argc, const char * const argv[]);
+static void parse_args(const unsigned int argc, char * const argv[]);
 static void print_help();
 static void print_version();
 
-const unsigned int chunkID = 0x52494646;
 const char *extension = NULL;
-const char *output = "../output";
 
 static const char *input = NULL;
 static bool recursive = false;
@@ -22,7 +21,7 @@ int main(int argc, char * const argv[])
 	if (argc == 1) {
 		print_help();
 	} else {
-		parse_args(argc, (const char * const *)argv);
+		parse_args(argc, argv);
 	}
 
 	dir_check_output();
@@ -31,34 +30,55 @@ int main(int argc, char * const argv[])
 	dir_process(.name = strdup(input), .file_action = file_process, .flag = recursive);
 }
 
-void parse_args(const unsigned int argc, const char * const argv[])
+void parse_args(const unsigned int argc, char * const argv[])
 {
-	bool eFlag = false;
-	bool pFlag = false;
+	bool eFlag = true, pFlag = true;
 
-	for (size_t i = 1; i < argc; i++) {
-		if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
-			print_help();
-		} else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
-			print_version();
-		} else if (strcmp(argv[i], "-p") == 0 || strcmp(argv[i], "--path") == 0) {
-			if (i + 1 <= argc - 1) {
-				++i;
-				input = argv[i];
+	struct option long_options[] = {{"help", no_argument, 0, 'h'},
+									{"version", no_argument, 0, 'v'},
+									{"recursive", no_argument, 0, 'r'},
+									{"path", required_argument, 0, 'p'},
+									{"extension", required_argument, 0, 'e'},
+									{0, 0, 0, 0}};
+
+	int i = 0, c;
+
+	while (1) {
+		c = getopt_long(argc, argv, "hvrp:e:", long_options, &i);
+
+		if (c == -1) break;
+
+		switch (c) {
+			case 'h':
+				print_help();
+			break;
+
+			case 'v':
+				print_version();
+			break;
+
+			case 'r':
+				recursive = true;
+			break;
+
+			case 'p':
+				input = optarg;
 				pFlag = true;
-			}
-		} else if (strcmp(argv[i], "-e") == 0 || strcmp(argv[i], "--extension") == 0) {
-			if (i + 1 <= argc - 1) {
-				++i;
-				extension = argv[i];
+			break;
+
+			case 'e':
+				extension = optarg;
 				eFlag = true;
-			}
-		} else if (strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "--recursive") == 0) {
-			recursive = true;
+			break;
+
+			case '?':
+			default:
+				print_help();
 		}
 	}
 
-	if (!pFlag) input = ".";
+	if (!pFlag)
+		input = ".";
 
 	if (!eFlag) {
 		fprintf(stderr, "The file extension has to be specified.\n\n");
