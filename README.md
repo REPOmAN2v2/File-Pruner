@@ -1,14 +1,11 @@
 File-Pruner
 =========
 
-This utility prunes unecessary data from supported filetypes. Right now it only
-supports .big files (actually .wav files) because this is what I needed it for 
-and I threw it together in an hour.
+This utility prunes unecessary data from supported filetypes. Right now it only supports .big files (actually .wav files) because this is what I needed it for and I threw it together in an hour.
 
-Launch it using `pruner -p /path/to/folder/containing/files -e extension` (
-don't add a trailing slash to the path). The extension is, for example, `big` 
-or `wav`. It outputs the pruned files and their old unnecessary header in `./
-output`.
+Launch it using `pruner -p /path/to/folder/containing/files -e extension` (don't add a trailing slash to the path). The extension is, for example, `big` or `wav`. It outputs the pruned files and their old unnecessary header in `./output`.
+
+The program is threaded, so files are parsed and processed in parallel.
 
 Supported command line arguments are: 
 
@@ -16,44 +13,33 @@ Supported command line arguments are:
 * `--help` or `-h`
 * `--path` or `-p` (defaults to `.` i.e. the current directory)
 * `--extension` or `-e` (required)
-* `--recursive` or `-r`: recursively parse the directory i.e. search in 
-subfolders
+* `--recursive` or `-r`: recursively parse the directory i.e. search in subfolders
 
 It should work fine on all modern OS.
 
 Implementation
 -----------
 
-If you want to modify this to support another format, it's easy as long as the 
-format is organised in mostly the same way and you want to delete the header.
+If you want to modify this to support another format, it's easy as long as the format is organised in mostly the same way and you want to delete the header.
 
-You'll have to modify the chunkID, which is the pattern you want to recognise.
-Everything up to that chunk is deleted. Depending on the length of your chunk 
-you'll have to modify the way the chunk recognition code is built when reading 
-the file, in findChunk(). Right now, it reads 4 bytes byte-by-byte and stores 
-them in an uint32.
+You'll have to modify the chunkID, which is the pattern you want to recognise.Everything up to that chunk is deleted. Depending on the length of your chunk you'll have to modify the way the chunk recognition code is built when reading the file, in findChunk(). Right now, it reads 4 bytes byte-by-byte and stores them in an uint32.
 
-The code is fairly well encapsulated. The directory parser is self contained 
-and takes any number of struct _file members as arguments thanks to a simple 
-macro. Two of these arguments can be callbacks to execute when encountering a 
-dir or a file. Directories can be recursively searched if the flag is set. 
+The code is fairly well encapsulated. The directory parser is self contained and takes any number of struct _file members as arguments thanks to a simple macro. Two of these arguments can be callbacks to execute when encountering a dir or a file. Directories can be recursively searched if the flag is set. 
 
-The file processer is built around the file structure returned from the dir 
-parser and it's also self-contained. The skeleton of a rudimentary error 
-accounting and checking system has been added to it. 
+The file processer is built around the file structure returned from the dir parser and it's also self-contained. The skeleton of a rudimentary error accounting and checking system has been added to it. 
 
 This will probably be updated in the future to support other filetypes natively.
 
 Version
 ----
 
-0.5
+0.6
 
 Installation
 --------------
 
 ##### Requires MinGW on Windows
-`make`
+`make` for a release build or `make DEBUG=1` to get debugging symbols and gprof profiling.
 
 License
 ----

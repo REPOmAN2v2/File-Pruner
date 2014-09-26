@@ -6,26 +6,26 @@
 #include "include.h"	// global variables
 #include "file.h"
 
-static int readFile(File *in);
-static int checkFormat(const char *filename);
-static long findChunk(File in);
-static void writeFile(File in, const long offset);
-static void writeHeader(File in, const long offset);
+static int file_read(File *in);
+static int file_check_format(const char *filename);
+static long file_find_chunk(File in);
+static void file_write(File in, const long offset);
+static void file_write_header(File in, const long offset);
 
-void processFile(File in)
+void file_process(File in)
 {
 	int errcnt = 0;
 	fprintf(stdout, "Processing %s\n", in.fullname);
 
-	if (checkFormat(in.fullname)) {
-		if (!readFile(&in)) {
-			long offset = findChunk(in);
+	if (file_check_format(in.fullname)) {
+		if (!file_read(&in)) {
+			long offset = file_find_chunk(in);
 
 			if (offset == -1)
 				++errcnt;
 			else {
-				writeFile(in, offset);
-				writeHeader(in, offset);
+				file_write(in, offset);
+				file_write_header(in, offset);
 			}
 		} else ++errcnt;
 	}
@@ -36,7 +36,7 @@ void processFile(File in)
 	in.error = errcnt;
 }
 
-int readFile(File *in)
+int file_read(File *in)
 {
 	FILE *file = fopen(in->fullname, "rb");
 
@@ -69,13 +69,13 @@ int readFile(File *in)
 	return in->error;
 }
 
-int checkFormat(const char *filename)
+int file_check_format(const char *filename)
 {
 	const char *dot = strrchr(filename, '.');
 	return (dot && !strcmp(dot + 1, extension));
 }
 
-long findChunk(File in)
+long file_find_chunk(File in)
 {
 	long pos = 0;
 	unsigned int code;
@@ -97,7 +97,7 @@ long findChunk(File in)
 	return -1;
 }
 
-void writeFile(File in, const long offset)
+void file_write(File in, const long offset)
 {
 	asprintf(&in.fullname, "%s/%s", output, in.name);
 	FILE *file = fopen(in.fullname, "wb");
@@ -110,7 +110,7 @@ void writeFile(File in, const long offset)
 	free(in.fullname);
 }
 
-void writeHeader(File in, const long offset)
+void file_write_header(File in, const long offset)
 {
 	asprintf(&in.fullname, "%s/header-%s", output, in.name);
 	FILE *file = fopen(in.fullname, "wb");
