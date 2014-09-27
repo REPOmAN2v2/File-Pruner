@@ -56,10 +56,7 @@ int dir_process_fn(File level)
 
 	closedir(current);
 
-	if (thread_number > 1) {
-		while (thpool_jobqueue_peek(thpool) != NULL);
-		thpool_destroy(thpool);
-	}
+	thpool_destroy(thpool, thpool_graceful);
 
 	return errct;
 }
