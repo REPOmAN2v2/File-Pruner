@@ -13,10 +13,9 @@ static void print_help();
 static void print_version();
 
 const char *extension = NULL;
-int thread_number = 1;
 
 static const char *input = ".";
-static bool recursive = false;
+static Flags flags;
 
 int main(int argc, char * const argv[])
 {
@@ -31,7 +30,7 @@ int main(int argc, char * const argv[])
 
 	clock_t t = clock();
 
-	dir_process(.name = strdup(input), .file_action = file_process, .flag = recursive);
+	dir_process(.name = strdup(input), .file_action = file_process, .recursive = flags.recursive, .threads = flags.threads);
 
 	t = clock() - t;
 	double time_taken = ((double)t)/CLOCKS_PER_SEC;
@@ -67,7 +66,7 @@ void parse_args(const unsigned int argc, char * const argv[])
 			break;
 
 			case 'r':
-				recursive = true;
+				flags.recursive = 1;
 			break;
 
 			case 'p':
@@ -75,7 +74,7 @@ void parse_args(const unsigned int argc, char * const argv[])
 			break;
 
 			case 't':
-				thread_number = atoi(optarg); // error checking is done in thpool.c
+				flags.threads = atoi(optarg);
 			break;
 
 			case 'e':
@@ -94,10 +93,10 @@ void parse_args(const unsigned int argc, char * const argv[])
 		print_help();
 	}
 
-	if (recursive == true && thread_number > 1) {
+	/*if (recursive == true && thread_number > 1) {
 		fprintf(stderr, "-r and -t are not compatible.\n\n");
 		print_help();
-	}
+	}*/
 }
 
 void print_help()

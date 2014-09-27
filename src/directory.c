@@ -23,6 +23,8 @@ int dir_process_fn(File level)
 		}
 	}
 
+	fprintf(stdout, "recur: %d, threads: %d\n", level.recursive, level.threads);
+
 	int errct = 0, i = 0;
 
 	DIR *current = opendir(level.fullname);
@@ -32,9 +34,11 @@ int dir_process_fn(File level)
 	int filecount = 1;
 	thpool_t *thpool = NULL;
 
-	if (thread_number > 1) {
+	if (level.threads > 1) {
 		filecount = dir_count(current, level.fullname);
-		thpool = thpool_init(thread_number);
+		if (level.depth == 0)
+			fprintf(stdout, "Creating pool\n");
+			thpool = thpool_init(level.threads);
 	}
 
 	File thread_files[filecount];
@@ -46,8 +50,10 @@ int dir_process_fn(File level)
 		thread_files[i].name = strdup(entry->d_name);
 		asprintf(&thread_files[i].fullname, "%s/%s", level.fullname, entry->d_name);
 
-		if (thread_number > 1) {
+		if (level.threads > 1) {
+			fprintf(stdout, "Adding pool work\n");
 			thpool_add_work(thpool, check_file, (void *)&thread_files[i]);
+			fprintf(stdout, "Pool work added\n");
 			++i;
 		} else {
 			check_file((void *)thread_files);
@@ -55,8 +61,12 @@ int dir_process_fn(File level)
 	}
 
 	closedir(current);
+	fprintf(stdout, "Closed dir, exiting\n");
 
-	thpool_destroy(thpool, thpool_graceful);
+	if (level.threads > 1 && level.depth == 0) {
+		fprintf(stdout, "Destroying pool\n");
+		thpool_destroy(thpool, thpool_graceful);
+	}
 
 	return errct;
 }
@@ -84,7 +94,7 @@ void * check_file(void *in)
 	stat(file->fullname, &s);
 
 	if (S_ISDIR(s.st_mode)) {
-		if (file->flag) {
+		if (file->recursive) {
 			++file->depth;
 			if (file->dir_action) {
 				file->dir_action(*file);
