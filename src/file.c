@@ -17,7 +17,7 @@ static void file_write_header(File in, const long offset);
 void file_process(File in)
 {
 	int errcnt = 0;
-	fprintf(stdout, "Processing %s\n", in.fullname);
+	//fprintf(stdout, "Processing %s\n", in.fullname);
 
 	if (file_check_format(in.fullname)) {
 		if (!file_read(&in)) {
@@ -45,14 +45,14 @@ int file_read(File *in)
 	if (file == NULL) {
 		fprintf(stderr, "Could not open %s\n", in->fullname);
 	} else {
-		fprintf(stdout, "Opened file with success\n");
+		//fprintf(stdout, "Opened file with success\n");
 
 		fseek(file, 0, SEEK_END);
 		in->len = ftell(file);
 		fseek(file, 0, SEEK_SET);
 
 		in->data = malloc(in->len * sizeof(char));
-		fprintf(stderr, "Allocated %lu bytes\n", in->len);
+		//fprintf(stderr, "Allocated %lu bytes\n", in->len);
 
 		size_t result = fread(in->data, sizeof(char), in->len, file);
 		fclose(file);
@@ -88,14 +88,14 @@ long file_find_chunk(File in)
 			   | data[pos+3];
 		//fprintf(stdout, "Code: 0x%X\n", code);
 		if (code == chunkID) {
-			fprintf(stdout, "Found it at byte 0x%X\n", data[pos]);
+			//fprintf(stdout, "Found it at byte 0x%X\n", data[pos]);
 			return pos;
 		} else {
 			pos += 4;
 		}
 	}
 
-	fprintf(stderr, "Code not found, unrecognised filetype for %s\n", in.fullname);
+	fprintf(stderr, "Chunk not found for %s\n", in.fullname);
 	return -1;
 }
 
@@ -105,7 +105,7 @@ void file_write(File in, const long offset)
 	FILE *file = fopen(in.fullname, "wb");
 
 	in.len -= offset;
-	fprintf(stdout, "Writing %lu bytes\n\n", in.len);
+	//fprintf(stdout, "Writing %lu bytes\n\n", in.len);
 	fwrite(in.data + offset, 1 , in.len, file);
 
 	fclose(file);

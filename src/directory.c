@@ -6,12 +6,12 @@
 #include <stdio.h>
 #include <dirent.h> 	// dirent
 #include <stdlib.h> 	// free
-#include <pthread.h>	// threads
+#include "thpool.h"		// threads
 
 const char *output = "../output";
 
 static int dir_count(DIR *in, const char *path);
-static void * thread_check_file(void *in);
+static void * check_file(void *in);
 
 int dir_process_fn(File level)
 {
@@ -29,8 +29,14 @@ int dir_process_fn(File level)
 	if (!current) return 1;
 	struct dirent *entry;
 
-	int filecount = dir_count(current, level.fullname);
-	pthread_t threads[filecount];
+	int filecount = 1;
+	thpool_t *thpool = NULL;
+
+	if (thread_number > 1) {
+		filecount = dir_count(current, level.fullname);
+		thpool = thpool_init(thread_number);
+	}
+
 	File thread_files[filecount];
 
 	while ((entry = readdir(current))) {
@@ -40,25 +46,24 @@ int dir_process_fn(File level)
 		thread_files[i].name = strdup(entry->d_name);
 		asprintf(&thread_files[i].fullname, "%s/%s", level.fullname, entry->d_name);
 
-		int rc = pthread_create(&threads[i], NULL, thread_check_file, (void *)&thread_files[i]);
-
-		if (rc) {
-			printf("ERROR; return code from pthread_create() is %d\n", rc);
-			exit(EXIT_FAILURE);
+		if (thread_number > 1) {
+			thpool_add_work(thpool, check_file, (void *)&thread_files[i]);
+			++i;
+		} else {
+			check_file((void *)thread_files);
 		}
-		++i;
 	}
 
 	closedir(current);
-	for (int i = 0; i < filecount; ++i) pthread_join(threads[i], NULL);
+
+	if (thread_number > 1) {
+		while (thpool_jobqueue_peek(thpool) != NULL);
+		thpool_destroy(thpool);
+	}
 
 	return errct;
 }
 
-/**
- *	Really annoying having to do that, consider implementing a thread pool in
- *	the future
- */
 int dir_count(DIR *in, const char *path)
 {
 	struct dirent *entry;
@@ -75,7 +80,7 @@ int dir_count(DIR *in, const char *path)
 	return count;
 }
 
-void * thread_check_file(void *in)
+void * check_file(void *in)
 {
 	File *file = (File *)in;
 	struct stat s;
@@ -88,14 +93,15 @@ void * thread_check_file(void *in)
 				file->dir_action(*file);
 			}
 			dir_process_fn(*file);
-		} else pthread_exit(NULL);
+		} else return NULL;
 	} else if (S_ISREG(s.st_mode) && file->file_action) {
 		file->file_action(*file);
 	}
 
 	free(file->fullname);
 	free(file->name);
-	pthread_exit(NULL);
+
+	return NULL;
 }
 
 void dir_check_output()

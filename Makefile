@@ -11,7 +11,7 @@ else
 CFLAGS += -O3 -march=native
 endif
 
-_HEADERS = directory.h file.h
+_HEADERS = directory.h file.h thpool.h
 _OBJECTS := $(_HEADERS:.h=.o)
 OBJECTS = $(patsubst %,$(ODIR)/%,$(_OBJECTS))
 HEADERS = $(patsubst %,$(SRC)/%,$(_HEADERS))
