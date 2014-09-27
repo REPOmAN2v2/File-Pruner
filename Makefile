@@ -8,7 +8,7 @@ CFLAGS = -Wall -Wextra -pthread -std=c11
 ifeq ($(DEBUG), 1)
 CFLAGS += -g -pg
 else
-CFLAGS += -O3 -march=native
+CFLAGS += -O3 -g -march=native
 endif
 
 _HEADERS = directory.h file.h thpool.h

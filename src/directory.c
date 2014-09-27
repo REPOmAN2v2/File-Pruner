@@ -51,9 +51,7 @@ int dir_process_fn(File level)
 		asprintf(&thread_files[i].fullname, "%s/%s", level.fullname, entry->d_name);
 
 		if (level.threads > 1) {
-			fprintf(stdout, "Adding pool work\n");
 			thpool_add_work(thpool, check_file, (void *)&thread_files[i]);
-			fprintf(stdout, "Pool work added\n");
 			++i;
 		} else {
 			check_file((void *)thread_files);
@@ -61,10 +59,10 @@ int dir_process_fn(File level)
 	}
 
 	closedir(current);
-	fprintf(stdout, "Closed dir, exiting\n");
+	//fprintf(stdout, "Closed dir, exiting\n");
 
 	if (level.threads > 1 && level.depth == 0) {
-		fprintf(stdout, "Destroying pool\n");
+		//fprintf(stdout, "Destroying pool\n");
 		thpool_destroy(thpool, thpool_graceful);
 	}
 

@@ -71,8 +71,8 @@
 #include <semaphore.h>
 
 typedef enum {
-	thpool_immediate = 0,
-	thpool_graceful = 1
+	thpool_immediate = -1,
+	thpool_graceful = 0
 } thpool_destroy_flags_t;
 
 

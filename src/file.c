@@ -101,7 +101,7 @@ long file_find_chunk(void *in, int chunk)
 
 void file_write(void *in, char *name, const long chunk, int flag)
 {
-	static FILE *out;
+	static _Thread_local FILE *out;
 	const char *data = in;
 
 	if (flag == -1) {
@@ -114,6 +114,7 @@ void file_write(void *in, char *name, const long chunk, int flag)
 
 	if (!out) {
 		asprintf(&name, "%s/%s", output, name);
+		//fprintf(stdout, "Writing %s\n", name);
 		out = fopen(name, "wb");
 	}
 
