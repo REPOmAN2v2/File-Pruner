@@ -3,7 +3,7 @@ BDIR=./bin
 SRC=./src
 
 CC = gcc
-CFLAGS = -Wall -Wextra -pthread -std=c11
+CFLAGS = -Wall -static -Wextra -pthread -std=c11
 
 ifeq ($(DEBUG), 1)
 CFLAGS += -g -pg
