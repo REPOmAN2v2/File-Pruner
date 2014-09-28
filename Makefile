@@ -8,7 +8,7 @@ CFLAGS = -Wall -Wextra -pthread -std=c11
 ifeq ($(DEBUG), 1)
 CFLAGS += -g -pg
 else
-CFLAGS += -O3 -g -march=native
+CFLAGS += -O3 -g -pg -march=native
 endif
 
 _HEADERS = directory.h file.h thpool.h
@@ -30,10 +30,10 @@ clean:
 
 rebuild: clean default
 
-pruner: ${OBJECTS} $(SRC)/include.h
+pruner: ${OBJECTS}
 	${CC} $^ $(SRC)/main.c $(CFLAGS) -o $(BDIR)/$@
 
-$(ODIR)/%.o: $(SRC)/%.c $(SRC)/%.h $(SRC)/include.h build
+$(ODIR)/%.o: $(SRC)/%.c $(SRC)/%.h build
 	${CC} $< -c $(CFLAGS) -o $@
 
 .PHONY: default clean check dist distcheck install rebuild uninstall

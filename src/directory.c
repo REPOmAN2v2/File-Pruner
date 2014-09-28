@@ -1,20 +1,35 @@
 #define _GNU_SOURCE		// asprintf()
 
-#include "directory.h"
-#include "include.h"	// global constants
 #include <sys/stat.h>	// struct stat and stat()
 #include <stdio.h>
 #include <dirent.h> 	// dirent
 #include <stdlib.h> 	// free
+
+#include "directory.h"
 #include "thpool.h"		// threads
 
 const char *output = "../output";
 
+static void dir_process_fn(File level, void *in);
 static int dir_count(DIR *in, const char *path);
-static void * check_file(void *in);
+static void check_file(File *file, void *in);
 
-int dir_process_fn(File level)
+void dir_process_wrapper(File level)
 {
+	thpool_t *thpool = NULL;
+
+	if ((level.threads > 1 && level.depth == 0)) {
+		fprintf(stdout, "Creating pool\n");
+		thpool = thpool_init(level.threads);
+	}
+
+	dir_process_fn(level, (void *)thpool);
+}
+
+void dir_process_fn(File level, void *in)
+{
+	thpool_t *thpool = in;
+
 	if (!level.fullname) {
 		if (level.name) {
 			level.fullname = level.name;
@@ -25,20 +40,16 @@ int dir_process_fn(File level)
 
 	fprintf(stdout, "recur: %d, threads: %d\n", level.recursive, level.threads);
 
-	int errct = 0, i = 0;
+	int i = 0, filecount;
 
 	DIR *current = opendir(level.fullname);
-	if (!current) return 1;
+	if (!current) return;
 	struct dirent *entry;
 
-	int filecount = 1;
-	thpool_t *thpool = NULL;
-
-	if (level.threads > 1) {
+	if (thpool) {
 		filecount = dir_count(current, level.fullname);
-		if (level.depth == 0)
-			fprintf(stdout, "Creating pool\n");
-			thpool = thpool_init(level.threads);
+	} else {
+		filecount = 1;
 	}
 
 	File thread_files[filecount];
@@ -50,12 +61,17 @@ int dir_process_fn(File level)
 		thread_files[i].name = strdup(entry->d_name);
 		asprintf(&thread_files[i].fullname, "%s/%s", level.fullname, entry->d_name);
 
-		if (level.threads > 1) {
+		check_file(&thread_files[i], (void *)thpool);
+
+		if (thpool)
+			++i;
+
+		/*if (level.threads > 1) {
 			thpool_add_work(thpool, check_file, (void *)&thread_files[i]);
 			++i;
 		} else {
 			check_file((void *)thread_files);
-		}
+		}*/
 	}
 
 	closedir(current);
@@ -66,7 +82,10 @@ int dir_process_fn(File level)
 		thpool_destroy(thpool, thpool_graceful);
 	}
 
-	return errct;
+	for (int i = 0; i < filecount; ++i) {
+		free(thread_files[i].fullname);
+		free(thread_files[i].name);
+	}
 }
 
 int dir_count(DIR *in, const char *path)
@@ -85,9 +104,9 @@ int dir_count(DIR *in, const char *path)
 	return count;
 }
 
-void * check_file(void *in)
+void check_file(File *file, void *in)
 {
-	File *file = (File *)in;
+	thpool_t *thpool = in;
 	struct stat s;
 	stat(file->fullname, &s);
 
@@ -95,18 +114,19 @@ void * check_file(void *in)
 		if (file->recursive) {
 			++file->depth;
 			if (file->dir_action) {
-				file->dir_action(*file);
+				if (thpool)
+					thpool_add_work(thpool, file->dir_action, (void *)file);
+				else
+					file->dir_action(file);
 			}
-			dir_process_fn(*file);
-		} else return NULL;
+			dir_process_fn(*file, thpool);
+		}
 	} else if (S_ISREG(s.st_mode) && file->file_action) {
-		file->file_action(*file);
+		if (thpool)
+			thpool_add_work(thpool, file->file_action, (void *)file);
+		else
+			file->file_action(file);
 	}
-
-	free(file->fullname);
-	free(file->name);
-
-	return NULL;
 }
 
 void dir_check_output()

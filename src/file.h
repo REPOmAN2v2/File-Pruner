@@ -3,6 +3,6 @@
 
 #include "directory.h"	// filepath structure
 
-void file_process(File in);
+void * file_process(void *in);
 
 #endif

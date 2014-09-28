@@ -12,7 +12,7 @@ static void parse_args(const unsigned int argc, char * const argv[]);
 static void print_help();
 static void print_version();
 
-const char *extension = NULL;
+static const char *extension = NULL;
 
 static const char *input = ".";
 static Flags flags;
@@ -30,7 +30,9 @@ int main(int argc, char * const argv[])
 
 	clock_t t = clock();
 
-	dir_process(.name = strdup(input), .file_action = file_process, .recursive = flags.recursive, .threads = flags.threads);
+	dir_process(.name = strdup(input), .file_action = file_process,
+				.recursive = flags.recursive, .threads = flags.threads,
+				.extension = extension);
 
 	t = clock() - t;
 	double time_taken = ((double)t)/CLOCKS_PER_SEC;

@@ -3,7 +3,7 @@
 #include <stdio.h>		// file IO
 #include <stdlib.h>		// dynamic memory
 #include <string.h>		// strcmp, strrchr
-#include "include.h"	// global variables
+
 #include "file.h"
 
 #define BYTECHUNK 1024
@@ -11,19 +11,23 @@
 static const unsigned int chunkID = 0x52494646;
 
 static void file_io(File *in);
-static int file_check_format(const char *filename);
+static int file_check_format(const char *filename, const char *extension);
 static long file_find_chunk(void *in, int chunk);
 static void file_write(void *in, char *name, const long chunk, int flag);
 static void file_close();
 
-void file_process(File in)
+void * file_process(void *in)
 {
-	if (file_check_format(in.fullname)) {
-		file_io(&in);
+	File *file = in;
+
+	if (file_check_format(file->fullname, file->extension)) {
+		file_io(file);
 	}
 
-	if (in.data)
-		free(in.data);
+	if (file->data)
+		free(file->data);
+
+	return NULL;
 }
 
 void file_io(File *in)
@@ -41,7 +45,7 @@ void file_io(File *in)
 		in->len = ftell(file);
 		fseek(file, 0, SEEK_SET);
 
-		in->data = malloc(BYTECHUNK);
+		in->data = malloc(BYTECHUNK < in->len ? BYTECHUNK : in->len);
 
 		do {
 			unsigned long read = 0;
@@ -72,7 +76,7 @@ void file_io(File *in)
 	}
 }
 
-int file_check_format(const char *filename)
+int file_check_format(const char *filename, const char *extension)
 {
 	const char *dot = strrchr(filename, '.');
 	return (dot && !strcmp(dot + 1, extension));
@@ -89,7 +93,7 @@ long file_find_chunk(void *in, int chunk)
 			   | data[pos+3];
 
 		if (code == chunkID) {
-			fprintf(stdout, "Found 0x%X at byte %d\n", code, data[pos]);
+			//fprintf(stdout, "Found 0x%X at byte %d\n", code, data[pos]);
 			return pos;
 		} else {
 			pos += 4;
