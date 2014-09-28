@@ -1,7 +1,7 @@
 File-Pruner
 =========
 
-This utility prunes unecessary data from supported filetypes. Right now it only supports .big files (actually .wav files) because this is what I needed it for and I threw it together in an hour.
+This utility prunes unecessary data from supported filetypes. Right now it only supports .big files (actually .wav files) because this is what I needed it for.
 
 Launch it using at least `pruner -e extension` (don't add a trailing slash to the path). The extension is, for example, `big` or `wav`. It outputs the pruned files and their old unnecessary header in `../output`.
 
@@ -16,8 +16,6 @@ Supported command line arguments are:
 * `--recursive` or `-r`: recursively parse the directory i.e. search in subfolders
 * `--threads` or `-t`: specify the number of threads (defaults to `1`)
 
-`-t` and `-r` are not currently compatible.
-
 File formats
 -----------
 
@@ -30,22 +28,26 @@ This may be updated to natively support other formats in the future.
 Implementation
 ------------
 
+This code started as a simple 100-line script to strip headers from files. It worked very well but was limited in scope and not very safe It has now become more of a pet project to learn file processing and multithreading.
+
 The code is fairly well encapsulated. The directory parser is self contained and takes any number of struct _file members as arguments thanks to a simple macro. Two of these arguments can be callbacks to execute when encountering a dir or a file. Directories can be recursively searched if the flag is set. 
 
-The file processor is built around the file structure returned from the dir parser and it's also self-contained. The skeleton of a rudimentary error accounting and checking system has been added to it. 
+The file processor is built around the file structure returned from the dir parser and is also self-contained. It is run in individual threads if the user desires, so all the file IO and processing happens in parallel. Files are processed in chunks, which is safer than loading the entire file in memory, however big it is, at the cost of a small performance hit. Further experimentation is needed to find if the chunk size matters a lot. 
 
-Threading uses a thread pool. All credit and ownership goes to [Pithikos](https://github.com/Pithikos/C-Thread-Pool) for the LGPL implementation. By default, no threads are created and the program runs serially. File IO is very expensive so having multiple threads write to a disk isn't necessarily better. However this will depend on your hard drive, your CPU, the number and the size of the files as well as the number of threads you create. Threading as implemented won't play nicely with the recursive search either.
+Threading uses a thread pool and a basic garbage collector because of the recursive search of folders. Indeed, the directory parser allocates memory to pass to the threads and freeing this memory when returning from a recursive call would corrupt the thread's memory, since they run independently. The GC is simply a double linked list containing a pointer to the array of threads which should be freed when all the threads are finished. The data buffer contained in those file structures is freed independently in each thread. 
+
+All credit and ownership goes to [Pithikos](https://github.com/Pithikos/C-Thread-Pool) for the LGPL implementation of the thread pool, though I made a few modifications. By default, no threads are created and the program runs serially. File IO is very expensive so having multiple threads write to a disk isn't necessarily better. However this will depend on your hard drive setup, your CPU, your OS, the number and the size of the files as well as the number of threads you create, etc. 
 
 Version
 ----
 
-0.8
+0.9
 
-Installation
+Compilation
 --------------
 
 ##### Requires MinGW on Windows
-`make` for a release build or `make DEBUG=1` to get debugging symbols and `gprof` profiling. Note that profiling with `gprof` seems very expensive when multithreading.
+`make` for a release build or `make DEBUG=1` to get debugging symbols and `gprof` profiling.
 
 License
 ----

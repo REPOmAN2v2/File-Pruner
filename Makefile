@@ -8,10 +8,10 @@ CFLAGS = -Wall -Wextra -pthread -std=c11
 ifeq ($(DEBUG), 1)
 CFLAGS += -g -pg
 else
-CFLAGS += -O3 -g -pg -march=native
+CFLAGS += -O3 -march=native
 endif
 
-_HEADERS = directory.h file.h thpool.h
+_HEADERS = directory.h file.h thpool.h gc.h
 _OBJECTS := $(_HEADERS:.h=.o)
 OBJECTS = $(patsubst %,$(ODIR)/%,$(_OBJECTS))
 HEADERS = $(patsubst %,$(SRC)/%,$(_HEADERS))

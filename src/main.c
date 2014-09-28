@@ -94,19 +94,14 @@ void parse_args(const unsigned int argc, char * const argv[])
 		fprintf(stderr, "The file extension has to be specified.\n\n");
 		print_help();
 	}
-
-	/*if (recursive == true && thread_number > 1) {
-		fprintf(stderr, "-r and -t are not compatible.\n\n");
-		print_help();
-	}*/
 }
 
 void print_help()
 {
 	fprintf(stdout, "--path/-p /path/to/folder\tSpecify the path to the folder containing the files to process (without trailing slash)\n"
-					"--recursive/-r\t\t\tSearch subfolders (not compatible with -t).\n"
+					"--recursive/-r\t\t\tSearch subfolders.\n"
 					"--extension/-e\t\t\tSpecify file extension (required)\n"
-					"--threads/-t\t\t\tSpecify number of threads (defaults to 1, not compatible with -r)\n"
+					"--threads/-t\t\t\tSpecify number of threads (defaults to 1)\n"
 					"--help/-h \t\t\tPrint this help screen\n"
 					"--version/-v\t\t\tPrint version information.\n");
     exit(EXIT_SUCCESS);
@@ -114,7 +109,7 @@ void print_help()
 
 void print_version()
 {
-	fprintf(stdout, "File pruner 0.8\n\n"
+	fprintf(stdout, "File pruner 0.9\n\n"
 					"The MIT License (MIT)\nCopyright (c) 2014 REPOmAN2v2\n\n");
 	exit(EXIT_SUCCESS);
 }

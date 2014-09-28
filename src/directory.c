@@ -7,12 +7,13 @@
 
 #include "directory.h"
 #include "thpool.h"		// threads
+#include "gc.h"			// garbage collection
 
 const char *output = "../output";
 
 static void dir_process_fn(File level, void *in);
 static int dir_count(DIR *in, const char *path);
-static void check_file(File *file, void *in);
+static void dir_check_file(File *file, void *in);
 
 void dir_process_wrapper(File level)
 {
@@ -38,8 +39,6 @@ void dir_process_fn(File level, void *in)
 		}
 	}
 
-	fprintf(stdout, "recur: %d, threads: %d\n", level.recursive, level.threads);
-
 	int i = 0, filecount;
 
 	DIR *current = opendir(level.fullname);
@@ -52,7 +51,8 @@ void dir_process_fn(File level, void *in)
 		filecount = 1;
 	}
 
-	File thread_files[filecount];
+	File *thread_files = NULL;
+	thread_files = malloc(sizeof (File) * filecount);
 
 	while ((entry = readdir(current))) {
 		if (entry->d_name[0] == '.') continue;
@@ -61,30 +61,18 @@ void dir_process_fn(File level, void *in)
 		thread_files[i].name = strdup(entry->d_name);
 		asprintf(&thread_files[i].fullname, "%s/%s", level.fullname, entry->d_name);
 
-		check_file(&thread_files[i], (void *)thpool);
+		dir_check_file(&thread_files[i], (void *)thpool);
 
 		if (thpool)
 			++i;
-
-		/*if (level.threads > 1) {
-			thpool_add_work(thpool, check_file, (void *)&thread_files[i]);
-			++i;
-		} else {
-			check_file((void *)thread_files);
-		}*/
 	}
 
 	closedir(current);
-	//fprintf(stdout, "Closed dir, exiting\n");
+	gc_add_garbage(thread_files);
 
 	if (level.threads > 1 && level.depth == 0) {
-		//fprintf(stdout, "Destroying pool\n");
 		thpool_destroy(thpool, thpool_graceful);
-	}
-
-	for (int i = 0; i < filecount; ++i) {
-		free(thread_files[i].fullname);
-		free(thread_files[i].name);
+		gc_collect_garbage();
 	}
 }
 
@@ -104,7 +92,7 @@ int dir_count(DIR *in, const char *path)
 	return count;
 }
 
-void check_file(File *file, void *in)
+void dir_check_file(File *file, void *in)
 {
 	thpool_t *thpool = in;
 	struct stat s;
