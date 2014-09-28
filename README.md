@@ -3,7 +3,7 @@ File-Pruner
 
 This utility prunes unecessary data from supported filetypes. Right now it only supports .big files (actually .wav files) because this is what I needed it for.
 
-Launch it using at least `pruner -e extension` (don't add a trailing slash to the path). The extension is, for example, `big` or `wav`. It outputs the pruned files and their old unnecessary header in `../output`.
+Launch it using at least `pruner -i string` (don't add a trailing slash to the path). The string should be the pattern to recognise, for example `RIFF` for `wav` files.
 
 The program supports multithreading, so files can be parsed and processed in parallel.
 
@@ -12,27 +12,24 @@ Supported command line arguments are:
 * `--version` or `-v`
 * `--help` or `-h`
 * `--path` or `-p` (defaults to `.` i.e. the current directory)
-* `--extension` or `-e` (required)
+* `--id` or `-i`: the pattern to recognise, should be a regular string, not hexadecimal (required)
+* `--extension` or `-e`: the program can search files with a specific extension only
 * `--recursive` or `-r`: recursively parse the directory i.e. search in subfolders
 * `--threads` or `-t`: specify the number of threads (defaults to `1`)
 
 File formats
 -----------
 
-If you want to modify this to support another format, it's easy as long as the format is organised in mostly the same way and you want to delete the header.
-
-You'll have to modify the chunkID in file.c, which is the pattern you want to recognise. Everything up to that chunk is deleted. Depending on the length of your chunk you'll have to modify the way the chunk recognition code is built when reading the file, in file_find_chuck(). Right now, it reads 4 bytes byte-by-byte and stores them in an uint32.
-
-This may be updated to natively support other formats in the future.
+This program can be used against any file as long as you give it a pattern to recognise. Everything before the first occurence of that pattern will be deleted. 
 
 Implementation
 ------------
 
-This code started as a simple 100-line script to strip headers from files. It worked very well but was limited in scope and not very safe It has now become more of a pet project to learn file processing and multithreading.
+This program started as a simple 100-line script to strip headers from files. It worked very well but was limited in scope and not very safe It has now become more of a pet project to learn file processing and multithreading.
 
 The code is fairly well encapsulated. The directory parser is self contained and takes any number of struct _file members as arguments thanks to a simple macro. Two of these arguments can be callbacks to execute when encountering a dir or a file. Directories can be recursively searched if the flag is set. 
 
-The file processor is built around the file structure returned from the dir parser and is also self-contained. It is run in individual threads if the user desires, so all the file IO and processing happens in parallel. Files are processed in chunks, which is safer than loading the entire file in memory, however big it is, at the cost of a small performance hit. Further experimentation is needed to find if the chunk size matters a lot. 
+The file processor is built around the file structure returned from the dir parser and is also self-contained. It is run in individual threads if the user desires, so all the file IO and processing happens in parallel. Files are processed in chunks, which is safer than loading the entire file in memory, however big it is, at the cost of a small performance hit. Further experimentation is needed to find if the chunk size matters a lot. The pattern is searched for using a simple algorithm for now.
 
 Threading uses a thread pool and a basic garbage collector because of the recursive search of folders. Indeed, the directory parser allocates memory to pass to the threads and freeing this memory when returning from a recursive call would corrupt the thread's memory, since they run independently. The GC is simply a double linked list containing a pointer to the array of threads which should be freed when all the threads are finished. The data buffer contained in those file structures is freed independently in each thread. 
 
@@ -41,7 +38,7 @@ All credit and ownership goes to [Pithikos](https://github.com/Pithikos/C-Thread
 Version
 ----
 
-0.9
+1.0
 
 Compilation
 --------------

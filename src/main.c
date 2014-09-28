@@ -12,8 +12,6 @@ static void parse_args(const unsigned int argc, char * const argv[]);
 static void print_help();
 static void print_version();
 
-static const char *extension = NULL;
-
 static const char *input = ".";
 static Flags flags;
 
@@ -30,9 +28,7 @@ int main(int argc, char * const argv[])
 
 	clock_t t = clock();
 
-	dir_process(.name = strdup(input), .file_action = file_process,
-				.recursive = flags.recursive, .threads = flags.threads,
-				.extension = extension);
+	dir_process(.name = strdup(input), .file_action = file_process, .flags = flags);
 
 	t = clock() - t;
 	double time_taken = ((double)t)/CLOCKS_PER_SEC;
@@ -41,10 +37,11 @@ int main(int argc, char * const argv[])
 
 void parse_args(const unsigned int argc, char * const argv[])
 {
-	bool eFlag = false;
+	bool iFlag = false;
 
 	struct option long_options[] = {{"help", no_argument, 0, 'h'},
 									{"version", no_argument, 0, 'v'},
+									{"id", required_argument, 0, 'i'},
 									{"recursive", no_argument, 0, 'r'},
 									{"path", required_argument, 0, 'p'},
 									{"threads", required_argument, 0, 't'},
@@ -54,7 +51,7 @@ void parse_args(const unsigned int argc, char * const argv[])
 	int i = 0, c;
 
 	while (1) {
-		c = getopt_long(argc, argv, "hvrp:t:e:", long_options, &i);
+		c = getopt_long(argc, argv, "hvi:rp:t:e:", long_options, &i);
 
 		if (c == -1) break;
 
@@ -80,8 +77,12 @@ void parse_args(const unsigned int argc, char * const argv[])
 			break;
 
 			case 'e':
-				extension = optarg;
-				eFlag = true;
+				flags.extension = optarg;
+			break;
+
+			case 'i':
+				flags.chunkID = optarg;
+				iFlag = true;
 			break;
 
 			case '?':
@@ -90,8 +91,8 @@ void parse_args(const unsigned int argc, char * const argv[])
 		}
 	}
 
-	if (!eFlag) {
-		fprintf(stderr, "The file extension has to be specified.\n\n");
+	if (!iFlag) {
+		fprintf(stderr, "The bytes to be identified have to be specified.\n\n");
 		print_help();
 	}
 }
@@ -100,7 +101,8 @@ void print_help()
 {
 	fprintf(stdout, "--path/-p /path/to/folder\tSpecify the path to the folder containing the files to process (without trailing slash)\n"
 					"--recursive/-r\t\t\tSearch subfolders.\n"
-					"--extension/-e\t\t\tSpecify file extension (required)\n"
+					"--extension/-e\t\t\tSpecify file extension\n"
+					"--id/-i\t\t\t\tSpecify the string to be identified (required)\n"
 					"--threads/-t\t\t\tSpecify number of threads (defaults to 1)\n"
 					"--help/-h \t\t\tPrint this help screen\n"
 					"--version/-v\t\t\tPrint version information.\n");
@@ -109,7 +111,7 @@ void print_help()
 
 void print_version()
 {
-	fprintf(stdout, "File pruner 0.9\n\n"
+	fprintf(stdout, "File pruner 1.0\n\n"
 					"The MIT License (MIT)\nCopyright (c) 2014 REPOmAN2v2\n\n");
 	exit(EXIT_SUCCESS);
 }

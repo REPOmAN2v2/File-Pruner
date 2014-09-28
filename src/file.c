@@ -8,12 +8,10 @@
 
 #define BYTECHUNK 1024
 
-static const unsigned int chunkID = 0x52494646;
-
 static void file_io(File *in);
 static int file_check_format(const char *filename, const char *extension);
-static long file_find_chunk(void *in, int chunk);
-static void file_write(void *in, char *name, const long chunk, int flag);
+static const char * file_find_chunk(void *haystack, const size_t length, const char* needle);
+static void file_write(void *in, char *name, const size_t length, int flag);
 static void file_close();
 
 void * file_process(void *in)
@@ -34,9 +32,8 @@ void file_io(File *in)
 {
 	FILE *file = fopen(in->fullname, "rb");
 
-	int found_chunk = 0;
-	long chunk_pos = 0;
-	unsigned long total_read = 0;
+	const char *chunk = NULL;
+	size_t total_read = 0;
 
 	if (file == NULL) {
 		fprintf(stderr, "Could not open %s\n", in->fullname);
@@ -48,19 +45,17 @@ void file_io(File *in)
 		in->data = malloc(BYTECHUNK < in->len ? BYTECHUNK : in->len);
 
 		do {
-			unsigned long read = 0;
+			size_t read = 0;
 
 			read = (total_read + BYTECHUNK < in->len) ? BYTECHUNK : (in->len - total_read);
 			fread(in->data, 1, read, file);
 
-			if (found_chunk) {
+			if (chunk) {
 				file_write(in->data, in->name, read, 0);
 			} else {
-				chunk_pos = file_find_chunk(in->data, read);
-				if (chunk_pos > 0) {
-					found_chunk = 1;
-					file_write(in->data + chunk_pos, in->name, read - chunk_pos, 0);
-					chunk_pos += total_read;
+				chunk = file_find_chunk(in->data, read, in->chunkID);
+				if (chunk) {
+					file_write((void *)chunk, in->name, strlen(chunk), 0);
 				}
 			}
 
@@ -71,39 +66,54 @@ void file_io(File *in)
 		file_close();
 	}
 
-	if (chunk_pos == -1) {
+	if (!chunk) {
 		fprintf(stderr, "Chunk not found for %s\n", in->fullname);
 	}
 }
 
 int file_check_format(const char *filename, const char *extension)
 {
+	if (!extension) // we don't want to check the extension if it's left as NULL
+		return 1;
+
 	const char *dot = strrchr(filename, '.');
 	return (dot && !strcmp(dot + 1, extension));
 }
 
-long file_find_chunk(void *in, int chunk)
+const char * file_find_chunk(void *haystack, const size_t length, const char* needle)
 {
-	long pos = 0;
-	unsigned int code;
-	char *data = in;
+	const char *data = haystack;
+	const char *a, *b;
 
-	while (pos < chunk) {
-		code = data[pos] << 24 | data[pos+1] << 16 | data[pos+2] << 8
-			   | data[pos+3];
+	b = needle;
 
-		if (code == chunkID) {
-			//fprintf(stdout, "Found 0x%X at byte %d\n", code, data[pos]);
-			return pos;
-		} else {
-			pos += 4;
+    if (*b == 0) {
+		return NULL;
+    }
+
+    for (int i = 0; i < length; ++data, ++i) {
+		if (*data != *b) {
+		    continue;
 		}
-	}
 
-	return -1;
+		a = data;
+
+		while (1) {
+		    if (*b == 0) {
+				return data;
+		    }
+		    if (*a++ != *b++) {
+				break;
+		    }
+		}
+
+		b = needle;
+    }
+
+    return NULL;
 }
 
-void file_write(void *in, char *name, const long chunk, int flag)
+void file_write(void *in, char *name, const size_t length, int flag)
 {
 	static _Thread_local FILE *out;
 	const char *data = in;
@@ -122,7 +132,7 @@ void file_write(void *in, char *name, const long chunk, int flag)
 		out = fopen(name, "wb");
 	}
 
-	fwrite(data, 1, chunk, out);
+	fwrite(data, 1, length, out);
 }
 
 void file_close()
