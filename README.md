@@ -1,7 +1,7 @@
 File-Pruner
 =========
 
-This utility prunes unecessary data from supported filetypes. Right now it only supports .big files (actually .wav files) because this is what I needed it for.
+This utility prunes unecessary data from files.
 
 Launch it using at least `pruner -i string` (don't add a trailing slash to the path). The string should be the pattern to recognise, for example `RIFF` for `wav` files.
 
