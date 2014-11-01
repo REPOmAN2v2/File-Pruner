@@ -9,28 +9,17 @@
 #include "thpool.h"		// threads
 #include "gc.h"			// garbage collection
 
-const char *output = "../output";
+const char *output = "./output";
 
-static void dir_process_fn(File level, void *in);
+static void file_print(File in);
+static void dir_process_fn(File level);
+static void dir_process_threaded_fn(File level, thpool_t *thpool);
+static void dir_check_file_threaded(File *file, thpool_t *thpool);
+static void dir_check_file(File *file);
 static int dir_count(DIR *in, const char *path);
-static void dir_check_file(File *file, void *in);
 
 void dir_process_wrapper(File level)
 {
-	thpool_t *thpool = NULL;
-
-	if ((level.threads > 1 && level.depth == 0)) {
-		fprintf(stdout, "Creating pool\n");
-		thpool = thpool_init(level.threads);
-	}
-
-	dir_process_fn(level, (void *)thpool);
-}
-
-void dir_process_fn(File level, void *in)
-{
-	thpool_t *thpool = in;
-
 	if (!level.fullname) {
 		if (level.name) {
 			level.fullname = level.name;
@@ -39,41 +28,69 @@ void dir_process_fn(File level, void *in)
 		}
 	}
 
-	int i = 0, filecount;
+	if (level.threads > 1) {
+		fprintf(stdout, "Creating pool\n");
+		thpool_t *thpool = thpool_init(level.threads);
+		dir_process_threaded_fn(level, (void *)thpool);
+		thpool_destroy(thpool, thpool_graceful);
+		gc_collect_garbage();
+	} else {
+		dir_process_fn(level);
+	}
+}
 
-	DIR *current = opendir(level.fullname);
-	if (!current) return;
+void dir_process_fn(File level)
+{
+	DIR *cur_dir = opendir(level.fullname);
+	if (!cur_dir) {
+		fprintf(stderr, "The directory (%s) does not exist\n", level.fullname);
+		return;
+	}
 	struct dirent *entry;
 
-	if (thpool) {
-		filecount = dir_count(current, level.fullname);
-	} else {
-		filecount = 1;
+	File current = {0};
+
+	while ((entry = readdir(cur_dir))) {
+		if (entry->d_name[0] == '.')
+			continue;
+
+		current = level;
+		current.name = entry->d_name;
+		asprintf(&current.fullname, "%s/%s", level.fullname, entry->d_name);
+
+		dir_check_file(&current);
 	}
 
-	File *thread_files = NULL;
-	thread_files = malloc(sizeof (File) * filecount);
+	free(current.fullname);
+	closedir(cur_dir);
+}
 
-	while ((entry = readdir(current))) {
-		if (entry->d_name[0] == '.') continue;
+void dir_process_threaded_fn(File level, thpool_t *thpool)
+{
+	int i = 0, filecount;
+
+	DIR *cur_dir = opendir(level.fullname);
+	if (!cur_dir) return;
+	struct dirent *entry;
+
+	filecount = dir_count(cur_dir, level.fullname);
+
+	File *thread_files = malloc(sizeof (File) * filecount);
+
+	while ((entry = readdir(cur_dir))) {
+		if (entry->d_name[0] == '.')
+			continue;
 
 		thread_files[i] = level;
 		thread_files[i].name = strdup(entry->d_name);
 		asprintf(&thread_files[i].fullname, "%s/%s", level.fullname, entry->d_name);
 
-		dir_check_file(&thread_files[i], (void *)thpool);
-
-		if (thpool)
-			++i;
+		dir_check_file_threaded(&thread_files[i], thpool);
+		++i;
 	}
 
-	closedir(current);
+	closedir(cur_dir);
 	gc_add_garbage(thread_files);
-
-	if (level.threads > 1 && level.depth == 0) {
-		thpool_destroy(thpool, thpool_graceful);
-		gc_collect_garbage();
-	}
 }
 
 int dir_count(DIR *in, const char *path)
@@ -92,9 +109,8 @@ int dir_count(DIR *in, const char *path)
 	return count;
 }
 
-void dir_check_file(File *file, void *in)
+void dir_check_file_threaded(File *file, thpool_t *thpool)
 {
-	thpool_t *thpool = in;
 	struct stat s;
 	stat(file->fullname, &s);
 
@@ -102,19 +118,37 @@ void dir_check_file(File *file, void *in)
 		if (file->recursive) {
 			++file->depth;
 			if (file->dir_action) {
-				if (thpool)
-					thpool_add_work(thpool, file->dir_action, (void *)file);
-				else
-					file->dir_action(file);
+				thpool_add_work(thpool, file->dir_action, (void *)file);
 			}
-			dir_process_fn(*file, thpool);
+			dir_process_threaded_fn(*file, thpool);
 		}
 	} else if (S_ISREG(s.st_mode) && file->file_action) {
-		if (thpool)
-			thpool_add_work(thpool, file->file_action, (void *)file);
-		else
-			file->file_action(file);
+		thpool_add_work(thpool, file->file_action, (void *)file);
 	}
+}
+
+void dir_check_file(File *file)
+{
+	file_print(*file);
+	struct stat s;
+	stat(file->fullname, &s);
+
+	if (S_ISDIR(s.st_mode)) {
+		if (file->recursive) {
+			++file->depth;
+			if (file->dir_action) {
+				file->dir_action(file);
+			}
+			dir_process_fn(*file);
+		}
+	} else if (S_ISREG(s.st_mode) && file->file_action) {
+		fprintf(stdout, "File is file, executing function\n");
+		file->file_action(file);
+	}
+}
+
+void file_print(File in) {
+	fprintf(stdout, "\nName: %s\nPath: %s\nFunction: %p\n", in.name, in.fullname, in.file_action);
 }
 
 void dir_check_output()
