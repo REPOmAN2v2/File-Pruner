@@ -9,9 +9,6 @@
 #include "thpool.h"		// threads
 #include "gc.h"			// garbage collection
 
-const char *output = "./output";
-
-static void file_print(File in);
 static void dir_process_fn(File level);
 static void dir_process_threaded_fn(File level, thpool_t *thpool);
 static void dir_check_file_threaded(File *file, thpool_t *thpool);
@@ -129,7 +126,6 @@ void dir_check_file_threaded(File *file, thpool_t *thpool)
 
 void dir_check_file(File *file)
 {
-	file_print(*file);
 	struct stat s;
 	stat(file->fullname, &s);
 
@@ -142,16 +138,11 @@ void dir_check_file(File *file)
 			dir_process_fn(*file);
 		}
 	} else if (S_ISREG(s.st_mode) && file->file_action) {
-		fprintf(stdout, "File is file, executing function\n");
 		file->file_action(file);
 	}
 }
 
-void file_print(File in) {
-	fprintf(stdout, "\nName: %s\nPath: %s\nFunction: %p\n", in.name, in.fullname, in.file_action);
-}
-
-void dir_check_output()
+void dir_check_output(const char* output)
 {
 	struct stat st = {0};
 

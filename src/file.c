@@ -22,7 +22,7 @@ static size_t get_alloc_size(size_t a) {return BYTECHUNK < a ? BYTECHUNK : a;};
 void * file_process(void *in)
 {
 	File *file = in;
-	fprintf(stdout, "Processing file %s\n", file->fullname);
+	fprintf(stdout, "Processing file %s, looking for %s\n", file->fullname, file->chunkString);
 
 	if (file_check_format(file->fullname, file->extension)) {
 		file_read(file);
@@ -120,7 +120,7 @@ void file_write(File *in, const unsigned char *offset, size_t read)
 				.len = data + (in->len - 1) - offset};
 	size_t total_read = data + read - offset;
 
-	asprintf(&out.fullname, "%s/%s", output, out.name);
+	asprintf(&out.fullname, "%s/%s", in->output, out.name);
 	out.fp = fopen(out.fullname, "wb");
 
 	if (!out.fp) {

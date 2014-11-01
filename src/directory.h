@@ -8,12 +8,10 @@
 typedef struct _flags {
 	int recursive;
 	int threads;
-	//const int chunkHex;
+	char *output;
 	const char *extension;
-	const unsigned char *chunkString;
+	unsigned char *chunkString;
 } Flags;
-
-extern const char *output;
 
 struct _file;
 
@@ -33,6 +31,6 @@ typedef struct _file {
 } File;
 
 void dir_process_wrapper(File level);
-void dir_check_output();
+void dir_check_output(const char *output);
 
 #endif

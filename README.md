@@ -3,7 +3,7 @@ File-Pruner
 
 This utility prunes unecessary data from files.
 
-Launch it using at least `pruner -i string` (don't add a trailing slash to the path). The string should be the pattern to recognise, for example `RIFF` for `wav` files.
+Launch it using at least `pruner -s string`. The string should be the pattern to recognise, for example `RIFF` for `wav` files.
 
 The program supports multithreading, so files can be parsed and processed in parallel.
 
@@ -12,9 +12,11 @@ Supported command line arguments are:
 * `--version` or `-v`
 * `--help` or `-h`
 * `--path` or `-p` (defaults to `.` i.e. the current directory)
-* `--id` or `-i`: the pattern to recognise, should be a regular string, not hexadecimal (required)
-* `--extension` or `-e`: the program can search files with a specific extension only
-* `--recursive` or `-r`: recursively parse the directory i.e. search in subfolders
+* `--output` or `-o` (defaults to `.`)
+* `--string` or `-s`: the string pattern to recognise (required if not using -n)
+* `--hex` or `-n`: the hexadecimal sequence to recognise (required if not using -s)
+* `--extension` or `-e`: the program can search files with a specific extension only (defaults to null)
+* `--recursive` or `-r`: recursively parse the directory i.e. search in subfolders (defaults to no)
 * `--threads` or `-t`: specify the number of threads (defaults to `1`)
 
 File formats
@@ -38,7 +40,7 @@ All credit and ownership goes to [Pithikos](https://github.com/Pithikos/C-Thread
 Version
 ----
 
-1.0
+1.2
 
 Compilation
 --------------

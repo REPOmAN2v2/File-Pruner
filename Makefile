@@ -11,6 +11,10 @@ else
 CFLAGS += -O3 -march=native
 endif
 
+ifdef COMSPEC
+CFLAGS += -D__USE_MINGW_ANSI_STDIO=1
+endif
+
 _HEADERS = directory.h file.h thpool.h gc.h
 _OBJECTS := $(_HEADERS:.h=.o)
 OBJECTS = $(patsubst %,$(ODIR)/%,$(_OBJECTS))

@@ -1,3 +1,5 @@
+#define _GNU_SOURCE		// asprintf()
+
 #include <stdio.h>		// IO
 #include <stdlib.h>		// dynamic mem and exit()
 //#include <stdbool.h>	// boolean status flags
@@ -12,9 +14,10 @@
 static void parse_args(const unsigned int argc, char * const argv[]);
 static void print_help();
 static void print_version();
+static unsigned char * hex_to_byte(char *hex);
 
 static const char *input = ".";
-static Flags flags;
+static Flags flags = {.output = "./output"};
 
 int main(int argc, char * const argv[])
 {
@@ -24,8 +27,8 @@ int main(int argc, char * const argv[])
 		parse_args(argc, argv);
 	}
 
-	dir_check_output();
-	fprintf(stdout, "Path: %s\nOutput: %s\n\n", input, output);
+	dir_check_output(flags.output);
+	fprintf(stdout, "Path: %s\nOutput: %s\n\n", input, flags.output);
 
 	clock_t t = clock();
 
@@ -42,8 +45,9 @@ void parse_args(const unsigned int argc, char * const argv[])
 									{"version", no_argument, 0, 'v'},
 									{"recursive", no_argument, 0, 'r'},
 									{"path", required_argument, 0, 'p'},
-									{"number", required_argument, 0, 'n'},
+									{"hex", required_argument, 0, 'n'},
 									{"string", required_argument, 0, 's'},
+									{"output", required_argument, 0, 'o'},
 									{"threads", required_argument, 0, 't'},
 									{"extension", required_argument, 0, 'e'},
 									{0, 0, 0, 0}};
@@ -51,7 +55,7 @@ void parse_args(const unsigned int argc, char * const argv[])
 	int i = 0, c;
 
 	while (1) {
-		c = getopt_long(argc, argv, "hvrp:n:s:t:e:", long_options, &i);
+		c = getopt_long(argc, argv, "hvrp:n:s:o:t:e:", long_options, &i);
 
 		if (c == -1) break;
 
@@ -90,12 +94,12 @@ void parse_args(const unsigned int argc, char * const argv[])
 				flags.chunkString = optarg;
 			break;
 
+			case 'o':
+				flags.output = optarg;
+			break;
+
 			case 'n':
-				// %i respects the number's formatting
-				// i.e. 033 for octal or 0x33 for hex will be stored properly
-				// instead of %d "converting" 033 to 33 (033 = 27) and
-				// failing to convert 0x33
-				//sscanf(optarg, "%i", &flags.chunkHex);
+				flags.chunkString = hex_to_byte(optarg);
 			break;
 
 			case '?':
@@ -105,19 +109,20 @@ void parse_args(const unsigned int argc, char * const argv[])
 	}
 
 	if (!flags.chunkString) {
-		fprintf(stderr, "The bytes to be identified have to be specified.\n\n");
+		fprintf(stderr, "The sequence to be identified has to be specified.\n\n");
 		print_help();
 	}
 }
 
 void print_help()
 {
-	fprintf(stdout, "--path/-p /path/to/folder\tSpecify the path to the folder containing the files to process (without trailing slash)\n"
-					"--recursive/-r\t\t\tSearch subfolders.\n"
-					"--extension/-e\t\t\tSpecify file extension\n"
-					"--string/-s\t\t\t\tSpecify the string to be identified (required if not using -n)\n"
-					"--hex/-h\t\t\t\tSpecify the string to be identified (required if not using -s)\n"
-					"--threads/-t\t\t\tSpecify number of threads (defaults to 1)\n"
+	fprintf(stdout, "--path/-p /path/to/folder\tSpecify the input folder (no trailing slash) - Defaults to '.'\n"
+					"--ouput/-o /path/to/folder\tSpecify the output folder (no trailing slash) - Defaults to './output'\n"
+					"--recursive/-r\t\t\tSearch subfolders. - Defaults to no\n"
+					"--extension/-e\t\t\tSpecify file extension - Defaults to null\n"
+					"--string/-s\t\t\tSpecify the string to be identified (required if not using -n)\n"
+					"--hex/-n\t\t\tSpecify the hex sequence to be identified without leading 0x (required if not using -s)\n"
+					"--threads/-t\t\t\tSpecify number of threads - Defaults to 1)\n"
 					"--help/-h \t\t\tPrint this help screen\n"
 					"--version/-v\t\t\tPrint version information.\n");
     exit(EXIT_SUCCESS);
@@ -125,7 +130,38 @@ void print_help()
 
 void print_version()
 {
-	fprintf(stdout, "File pruner 1.0\n\n"
+	fprintf(stdout, "File pruner 1.2\n\n"
 					"The MIT License (MIT)\nCopyright (c) 2014 REPOmAN2v2\n\n");
 	exit(EXIT_SUCCESS);
+}
+
+/*
+	Using sscanf(hex, "%x", bytes) with hex and bytes arrays of chars is
+	somewhat undefined. On little-endian systems, unaligned memory accesses are
+	allowed but the result is a reversed byte string. On big-endian systems,
+	unaligned memory accesses are not allowed. Hence using the "%-x" modifier
+	to modify the endianness when reading with sscanf does not work.
+
+	This solution is more portable and defined.
+*/
+unsigned char * hex_to_byte(char *hex)
+{
+	size_t len = strlen(hex)/2;
+	unsigned char *bytes = NULL;
+
+	if (len % 2) {
+		asprintf(&hex, "0%s", hex);
+		++len;
+	}
+
+	bytes = malloc(len+1);
+	bytes[len] = '\0';
+
+	for (size_t i = 0; i < len; ++i) {
+		// read an hex number of length 2 to be stored in a (unsigned) char
+		sscanf(hex + 2*i, "%2hhx", &bytes[i]);
+	}
+
+	free(hex);
+	return bytes;
 }
